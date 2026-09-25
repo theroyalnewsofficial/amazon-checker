@@ -3,7 +3,6 @@ from PIL import Image
 import io
 import zipfile
 import os
-import time
 
 # --- SAFE AI IMPORT ---
 try:
@@ -12,255 +11,159 @@ try:
     @st.cache_resource
     def get_session():
         return new_session("u2net")
-except Exception:
+except:
     REMBG_AVAILABLE = False
 
-# --- PAGE CONFIG ---
+# --- PAGE CONFIG - EKHANE LOGO.PNG DILE BROWSER TAB E LOGO DEKHABE ---
 st.set_page_config(
-    page_title="PureFrame Studio • Enterprise AI",
-    page_icon="⚡",
+    page_title="PureFrame Studio",
+    page_icon="logo.png" if os.path.exists("logo.png") else "⬢",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 if 'bg_color' not in st.session_state:
     st.session_state.bg_color = "#FFFFFF"
 
-# --- GLOBAL COREX DARK ENTERPRISE CSS ---
+def set_color(c):
+    st.session_state.bg_color = c
+
+# --- PREMIUM WHITE LABEL CSS ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    #MainMenu, footer,.stDeployButton, header, [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {display: none!important; visibility: hidden!important; height: 0!important;}
+  .stApp > header {display: none!important;}
+    section[data-testid="stSidebar"] {display: none!important;}
 
-    /* Hide standard Streamlit header elements */
-    #MainMenu, footer, .stDeployButton, header, [data-testid="stHeader"], [data-testid="stToolbar"] {
-        display: none!important;
-        visibility: hidden!important;
-    }
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+  .stApp { background: #f8f8f7; }
 
-    html, body, [class*="css"] {
-        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
+  .navbar { display:flex; justify-content:space-between; align-items:center; padding: 12px 0 28px 0; border-bottom: 1px solid #eee; margin-bottom: 28px;}
+  .logo-text { font-size: 22px; font-weight: 800; letter-spacing: -0.8px; color: #111; }
+  .logo-text span { font-weight: 300; color: #888; }
+  .nav-badge { color:#888; font-size:11px; font-weight:700; letter-spacing:1.2px; border: 1px solid #e5e5e5; padding: 6px 12px; border-radius: 20px; background: white;}
 
-    .stApp {
-        background: #090A0F;
-        color: #F3F4F6;
-    }
+  .hero { background: #0e0e0e; padding: 64px 40px; border-radius: 32px; text-align: center; margin-bottom: 32px; color: white; position: relative; overflow: hidden; }
+  .hero h1 { font-size: 50px; font-weight: 800; line-height: 1.05; margin:0; color: white; letter-spacing: -1.5px; }
+  .hero h1 i { font-style: normal; color: #a3a3a3; font-weight: 300; }
+  .hero p { color: #888; font-size: 15px; margin-top: 14px; font-weight: 400; }
 
-    /* Sidebar Styling */
-    section[data-testid="stSidebar"] {
-        background-color: #0D0E15 !important;
-        border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
-    }
+  .card { background: white; border-radius: 20px; padding: 20px; border: 1px solid #efefef; box-shadow: 0 8px 24px rgba(0,0,0,0.04); }
+  .swatch { width: 46px; height: 46px; border-radius: 12px; border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.12); margin: 0 auto; cursor: pointer; transition: 0.2s; }
+  .swatch:hover { transform: scale(1.08); }
 
-    /* Corex Glass Card Component */
-    .glass-card {
-        background: rgba(18, 20, 29, 0.75);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-        padding: 24px;
-        margin-bottom: 20px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-    }
-
-    /* Metric Badge & Chips */
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: rgba(16, 185, 129, 0.1);
-        border: 1px solid rgba(16, 185, 129, 0.2);
-        color: #10B981;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.8px;
-        text-transform: uppercase;
-    }
-
-    /* Hero Banner Styling */
-    .hero-container {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.8) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 24px;
-        padding: 40px;
-        margin-bottom: 32px;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .hero-title {
-        font-size: 38px;
-        font-weight: 800;
-        letter-spacing: -1px;
-        background: linear-gradient(180deg, #FFFFFF 0%, #A1A1AA 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 8px;
-    }
-
-    .hero-sub {
-        color: #9CA3AF;
-        font-size: 14px;
-        font-weight: 400;
-    }
-
-    /* Streamlit Input Customization */
-    div[data-baseweb="select"] > div {
-        background-color: #161822 !important;
-        border-color: rgba(255, 255, 255, 0.1) !important;
-        color: white !important;
-        border-radius: 12px !important;
-    }
-
-    .stButton>button {
-        background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%) !important;
-        color: white !important;
-        border-radius: 12px !important;
-        height: 48px !important;
-        font-weight: 600 !important;
-        border: none !important;
-        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35) !important;
-        transition: all 0.2s ease !important;
-    }
-
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5) !important;
-    }
-
-    .stDownloadButton>button {
-        background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
-        color: white !important;
-        border-radius: 12px !important;
-        height: 52px !important;
-        font-weight: 700 !important;
-        border: none !important;
-        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
-    }
+  .stButton>button { background:#111; color:white; border-radius:12px; height:48px; font-weight:600; border:none; width:100%; font-size: 14px;}
+  .stButton>button:hover { background:#000; color:white; }
+  .stDownloadButton>button { background: #111; color: white; border-radius: 12px; height: 54px; font-weight: 700; width:100%; font-size: 15px;}
+  .stDownloadButton>button:hover { background: #000; color: white; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR CONTROL CENTER ---
-with st.sidebar:
-    st.markdown("""
-        <div style="display:flex; align-items:center; gap:12px; padding: 10px 0 20px 0;">
-            <div style="background:#6366F1; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800; color:white;">P</div>
-            <div>
-                <div style="font-weight:800; font-size:16px; color:#FFF; letter-spacing:-0.5px;">PureFrame</div>
-                <div style="font-size:10px; color:#6B7280; font-weight:600;">ECOSYSTEM v2.4</div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown('<span class="status-badge">● AI Core Engine Active</span>', unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
+# --- NAVBAR WITH LOGO ---
+try:
+    logo_img = Image.open("logo.png")
+    c1, c2 = st.columns([0.15, 0.85])
+    with c1:
+        st.image(logo_img, use_container_width=True)
+    with c2:
+        st.markdown('<div style="padding-top: 14px; display:flex; justify-content:space-between; align-items:center;"><div><span style="font-size:22px; font-weight:800; color:#111; letter-spacing:-0.8px;">PureFrame</span> <span style="font-size:22px; font-weight:300; color:#888;">STUDIO</span></div><div style="color:#888; font-size:11px; font-weight:700; letter-spacing:1.2px; border:1px solid #e5e5e5; padding:6px 12px; border-radius:20px; background:white;">AMAZON • SHOPIFY READY</div></div>', unsafe_allow_html=True)
+except:
+    st.markdown('<div class="navbar"><div class="logo-text">PureFrame <span>STUDIO</span></div><div class="nav-badge">AMAZON • SHOPIFY READY</div></div>', unsafe_allow_html=True)
 
-    st.markdown("### 🎛 Control Suite")
-    export_size = st.selectbox("Resolution Target", ["2000x2000 (Amazon Main)", "1080x1080 (Shopify Square)", "Original Size"])
-    ai_bg_remove = st.toggle("AI Smart Background Cutout", value=True, disabled=not REMBG_AVAILABLE)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("### 🎨 Background Canvas")
-    
-    preset_col1, preset_col2, preset_col3 = st.columns(3)
-    if preset_col1.button("Pure White"): st.session_state.bg_color = "#FFFFFF"
-    if preset_col2.button("Dark Void"): st.session_state.bg_color = "#000000"
-    if preset_col3.button("Studio Grey"): st.session_state.bg_color = "#F2F2F0"
+# --- HERO ---
+st.markdown("""
+<div class="hero">
+    <h1>Product Photos,<br><i>Studio Ready.</i></h1>
+    <p>AI background removal • Custom studio color • 2000x2000 Amazon compliant export</p>
+</div>
+""", unsafe_allow_html=True)
 
-    custom_color = st.color_picker("Custom Palette Color", st.session_state.bg_color)
-    st.session_state.bg_color = custom_color
+# --- CONTROLS ---
+top1, top2, top3 = st.columns([1.3, 1, 1], gap="large")
+with top1:
+    files = st.file_uploader("Upload product images", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, label_visibility="collapsed")
+    if files:
+        st.caption(f"✓ {len(files)} images selected • Bulk processing enabled")
 
-# --- MAIN DASHBOARD TOPBAR ---
-c1, c2 = st.columns([0.7, 0.3])
-with c1:
-    st.markdown("""
-    <div class="hero-container">
-        <div class="status-badge" style="margin-bottom:12px;">Next-Gen E-Commerce Processor</div>
-        <div class="hero-title">Studio Quality Photos in Seconds.</div>
-        <div class="hero-sub">Automated background extraction, studio lighting match, and Amazon/Shopify compliance engine.</div>
-    </div>
-    """, unsafe_allow_html=True)
+with top2:
+    st.markdown("**Background**")
+    cols = st.columns(5)
+    colors = ["#FFFFFF","#000000","#F2F2F0","#3B82F6","#E8FF59"]
+    names = ["White","Black","Studio","Blue","Lime"]
+    for col, clr, nm in zip(cols, colors, names):
+        with col:
+            if st.button(" ", key=f"cl_{clr}"):
+                set_color(clr); st.rerun()
+            st.markdown(f"<div class='swatch' style='background:{clr}'></div><div style='text-align:center; font-size:10px; font-weight:600; color:#999; margin-top:6px'>{nm}</div>", unsafe_allow_html=True)
+    picked = st.color_picker("Custom color", st.session_state.bg_color, label_visibility="collapsed")
+    if picked!= st.session_state.bg_color:
+        st.session_state.bg_color = picked
+        st.rerun()
 
-with c2:
-    st.markdown(f"""
-    <div class="glass-card" style="text-align:center;">
-        <div style="font-size:11px; color:#6B7280; font-weight:700; letter-spacing:1px; text-transform:uppercase;">Selected Canvas</div>
-        <div style="width:100%; height:42px; background:{st.session_state.bg_color}; border-radius:10px; margin:12px 0; border:1px solid rgba(255,255,255,0.2);"></div>
-        <div style="font-family:monospace; font-size:14px; font-weight:700; color:#FFF;">{st.session_state.bg_color.upper()}</div>
-    </div>
-    """, unsafe_allow_html=True)
+with top3:
+    st.markdown("**Export**")
+    size = st.selectbox("Size", ["2000x2000 (Amazon Main)", "1080x1080 (Square)", "Original"], label_visibility="collapsed")
+    do_remove = st.toggle("AI Background Removal", value=True, disabled=not REMBG_AVAILABLE)
+    st.markdown(f"<div style='margin-top:10px; padding:10px; background:{st.session_state.bg_color}; border:1px solid #eee; border-radius:10px; text-align:center; font-weight:700; font-size:12px; color:{'#000' if st.session_state.bg_color.upper() in ['#FFFFFF','#F2F2F0','#E8FF59'] else '#fff'}'>{st.session_state.bg_color.upper()} • {size.split(' ')[0]}</div>", unsafe_allow_html=True)
 
-# --- DRAG & DROP WORKSPACE ---
-st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-st.markdown("#### 📁 Batch Media Processing Workspace")
-files = st.file_uploader("Drop product images here", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, label_visibility="collapsed")
-st.markdown('</div>', unsafe_allow_html=True)
-
-# --- PROCESS & GALLERY ---
+# --- PROCESSING ---
 if files:
     hex_c = st.session_state.bg_color.lstrip('#')
-    r, g, b = tuple(int(hex_c[i:i+2], 16) for i in (0, 2, 4))
+    r,g,b = tuple(int(hex_c[i:i+2], 16) for i in (0,2,4))
     processed = []
-
-    progress_bar = st.progress(0, text="Initializing Enterprise Engine...")
+    prog = st.progress(0, text="Processing images...")
 
     for idx, f in enumerate(files):
         orig = Image.open(f).convert("RGBA")
-        if ai_bg_remove and REMBG_AVAILABLE:
+        if do_remove and REMBG_AVAILABLE:
             try:
                 sess = get_session()
                 cut = remove(orig, session=sess)
-            except Exception:
+            except:
                 cut = orig
         else:
             cut = orig
 
-        w, h = cut.size
-        m = max(w, h)
-        m = m + int(m * 0.08)
-        base = Image.new("RGBA", (m, m), (r, g, b, 255))
-        base.paste(cut, ((m - w) // 2, (m - h) // 2), cut)
+        w,h = cut.size
+        m = max(w,h)
+        m = m + int(m*0.08)
+        base = Image.new("RGBA", (m,m), (r,g,b,255))
+        base.paste(cut, ((m-w)//2, (m-h)//2), cut)
 
-        if "2000" in export_size:
-            final = base.resize((2000, 2000), Image.LANCZOS)
-        elif "1080" in export_size:
-            final = base.resize((1080, 1080), Image.LANCZOS)
+        if "2000" in size:
+            final = base.resize((2000,2000), Image.LANCZOS)
+        elif "1080" in size:
+            final = base.resize((1080,1080), Image.LANCZOS)
         else:
             final = base
 
         processed.append((f.name, final.convert("RGB")))
-        progress_bar.progress((idx + 1) / len(files), text=f"Rendering {idx + 1}/{len(files)}: {f.name}")
+        prog.progress((idx+1)/len(files), text=f"Processing {idx+1}/{len(files)}")
 
-    time.sleep(0.3)
-    progress_bar.empty()
-
-    st.markdown(f"### 🖼 Output Gallery ({len(processed)} Items Ready)")
-    
+    st.divider()
+    st.markdown(f"#### Processed • {len(processed)} Images")
     g_cols = st.columns(4)
     for i, (name, img) in enumerate(processed):
         with g_cols[i % 4]:
-            st.image(img, caption=f"{name[:18]}...", use_container_width=True)
+            st.image(img, caption=name[:22], use_container_width=True)
 
-    # ZIP Building
     zbuf = io.BytesIO()
     with zipfile.ZipFile(zbuf, "w") as z:
         for name, img in processed:
-            b_io = io.BytesIO()
-            img.save(b_io, format="JPEG", quality=96, optimize=True)
-            z.writestr(f"pureframe_{st.session_state.bg_color.replace('#','')}_{name.rsplit('.',1)[0]}.jpg", b_io.getvalue())
+            b = io.BytesIO()
+            img.save(b, format="JPEG", quality=96, optimize=True)
+            z.writestr(f"pureframe_{st.session_state.bg_color.replace('#','')}_{name.rsplit('.',1)[0]}.jpg", b.getvalue())
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.download_button(
-        f"⚡ Download Complete Studio Package ({len(processed)} Assets)", 
-        data=zbuf.getvalue(), 
-        file_name=f"pureframe_export_{st.session_state.bg_color.replace('#','')}.zip", 
-        mime="application/zip", 
-        use_container_width=True
-    )
+    st.download_button(f"Download {len(processed)} Images as ZIP", data=zbuf.getvalue(), file_name=f"pureframe_studio_{st.session_state.bg_color.replace('#','')}.zip", mime="application/zip", use_container_width=True)
+    st.balloons()
 else:
-    st.info("👋 Upload images in the section above to trigger the Corex processing pipeline.")
+    st.markdown("""
+    <div style="text-align:center; padding:90px 40px; background:white; border-radius:24px; border:1.5px dashed #e5e5e5;">
+        <div style="width:64px; height:64px; background:#111; color:white; border-radius:16px; display:flex; align-items:center; justify-content:center; margin:0 auto; font-size:28px; font-weight:800;">P</div>
+        <h3 style="margin:18px 0 8px 0; color:#111; font-weight:700;">Drop product images to start</h3>
+        <p style="color:#999; font-size:13px;">PNG, JPG, WEBP • Select up to 50 images at once • Bulk ZIP export</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-st.markdown("<br><hr style='border-color:rgba(255,255,255,0.05);'><div style='text-align:center; color:#4B5563; font-size:12px;'>Corex Ecosystem Engine • PureFrame Studio International Suite</div>", unsafe_allow_html=True)
+st.markdown("<br><div style='text-align:center; color:#bbb; font-size:11px; letter-spacing:0.5px;'>© 2026 PureFrame Studio • Professional Product Photography Studio</div>", unsafe_allow_html=True)
