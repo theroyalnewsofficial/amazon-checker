@@ -12,7 +12,7 @@ try:
 except:
     REMBG_AVAILABLE = False
 
-st.set_page_config(page_title="PixelPerfect Bulk", page_icon="✨", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="PureFrame Studio", page_icon="◐", layout="wide", initial_sidebar_state="collapsed")
 
 if 'bg_color' not in st.session_state:
     st.session_state.bg_color = "#FFFFFF"
@@ -20,107 +20,126 @@ if 'bg_color' not in st.session_state:
 def set_color(c):
     st.session_state.bg_color = c
 
+# --- PRO CSS ---
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     #MainMenu, footer, header,.stDeployButton {visibility: hidden;}
-   .hero { background: linear-gradient(135deg, #111 0%, #333 100%); padding: 40px; border-radius: 24px; text-align:center; margin-bottom:20px; }
-   .hero h1 { color: white; font-size: 42px; font-weight: 800; }
-   .hero p { color: #aaa; }
-   .glass-card { background: rgba(255,255,255,0.9); border-radius: 20px; padding: 20px; border: 1px solid #eee; }
-   .stButton>button { background:#111; color:white; border-radius:12px; height:52px; font-weight:700; border:none; }
-   .stButton>button:hover { background:#FF9900; }
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+   .stApp { background: #fafafa; }
+   .navbar { display:flex; justify-content:space-between; align-items:center; padding: 10px 0 20px 0; }
+   .logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+   .logo span { font-weight: 400; color: #888; }
+   .hero { background: #111; padding: 60px 40px; border-radius: 28px; text-align: center; margin-bottom: 30px; color: white; }
+   .hero h1 { font-size: 48px; font-weight: 800; line-height: 1.1; margin:0; }
+   .hero p { color: #999; font-size: 16px; margin-top: 12px; }
+   .card { background: white; border-radius: 20px; padding: 22px; border: 1px solid #eee; box-shadow: 0 10px 30px rgba(0,0,0,0.04); }
+   .swatch { width: 48px; height: 48px; border-radius: 14px; border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto; transition: 0.2s; }
+   .swatch:hover { transform: scale(1.1); }
+   .stButton>button { background:#111; color:white; border-radius:12px; height:52px; font-weight:700; border:none; width:100%; }
+   .stButton>button:hover { background:#111; transform: translateY(-1px); }
+   .stDownloadButton>button { background: #111; color: white; border-radius: 14px; height: 56px; font-weight: 800; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""<div class="hero"><h1>✨ Bulk Background Remover</h1><p>Select 10-20 Images at once • AI will remove & apply color • Download ZIP</p></div>""", unsafe_allow_html=True)
+# Navbar
+st.markdown('<div class="navbar"><div class="logo">◐ PureFrame <span>STUDIO</span></div><div style="color:#888; font-size:13px; font-weight:600;">AMAZON • SHOPIFY • INSTAGRAM READY</div></div>', unsafe_allow_html=True)
 
-# CONTROLS
-c1, c2, c3 = st.columns([1.2, 1, 1])
-with c1:
-    # --- MAIN CHANGE: accept_multiple_files=True ---
-    uploaded_files = st.file_uploader("Select Multiple Images", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, label_visibility="collapsed")
-    if uploaded_files:
-        st.success(f"✅ {len(uploaded_files)} images selected")
-with c2:
-    picked = st.color_picker("Pick Background Color", st.session_state.bg_color)
+# Hero
+st.markdown("""
+<div class="hero">
+    <h1>Studio-Grade Backgrounds,<br>In One Click.</h1>
+    <p>AI removes background • Apply any studio color • Export 2000×2000 Amazon Compliant</p>
+</div>
+""", unsafe_allow_html=True)
+
+# Controls
+top1, top2, top3 = st.columns([1.3, 1, 1], gap="large")
+with top1:
+    files = st.file_uploader("Upload Images", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, label_visibility="collapsed")
+    if files:
+        st.caption(f"{len(files)} images selected • You can select up to 50 images")
+
+with top2:
+    st.markdown("**Background Color**")
+    c_cols = st.columns(5)
+    colors = ["#FFFFFF","#000000","#F5F5F0","#3B82F6","#111111"]
+    labels = ["Pure White","Jet Black","Studio Gray","Brand Blue","Premium"]
+    for col, clr, lbl in zip(c_cols, colors, labels):
+        with col:
+            if st.button(" ", key=f"clr_{clr}"):
+                set_color(clr); st.rerun()
+            st.markdown(f"<div class='swatch' style='background:{clr}'></div><div style='text-align:center; font-size:10px; font-weight:600; color:#888; margin-top:6px'>{lbl}</div>", unsafe_allow_html=True)
+    picked = st.color_picker("Custom Color", st.session_state.bg_color, label_visibility="collapsed")
     if picked!= st.session_state.bg_color:
         st.session_state.bg_color = picked
         st.rerun()
-    # Color bubbles
-    cols = st.columns(5)
-    colors = ["#FFFFFF","#000000","#3B82F6","#FBBF24","#22C55E"]
-    for col, clr in zip(cols, colors):
-        with col:
-            if st.button(" ", key=f"c_{clr}", use_container_width=True):
-                set_color(clr); st.rerun()
-            st.markdown(f"<div style='width:32px; height:32px; border-radius:50%; background:{clr}; border:2px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.2); margin:0 auto'></div>", unsafe_allow_html=True)
 
-with c3:
-    size = st.selectbox("Size", ["2000x2000 Amazon", "1080x1080", "Original"])
-    do_remove = st.toggle("✂️ Real BG Remove (AI)", value=True, disabled=not REMBG_AVAILABLE)
+with top3:
+    st.markdown("**Export Settings**")
+    size = st.selectbox("Output Size", ["2000x2000 (Amazon Main)", "1080x1080 (Square)", "Original Size"], label_visibility="collapsed")
+    do_remove = st.toggle("AI Background Removal", value=True, disabled=not REMBG_AVAILABLE)
+    st.markdown(f"<div style='margin-top:10px; padding:12px; background:{st.session_state.bg_color}; border:1px solid #eee; border-radius:10px; text-align:center; font-weight:700; font-size:13px; color:{'#000' if st.session_state.bg_color=='#FFFFFF' else '#fff'}'>{st.session_state.bg_color.upper()} • {size}</div>", unsafe_allow_html=True)
 
-if uploaded_files:
+# Processing
+if files:
     hex_c = st.session_state.bg_color.lstrip('#')
     r,g,b = tuple(int(hex_c[i:i+2], 16) for i in (0,2,4))
-
-    # Process all images
-    processed_images = []
-
-    progress = st.progress(0, text="Processing...")
-    for i, file in enumerate(uploaded_files):
-        original = Image.open(file).convert("RGBA")
-
+    processed = []
+    prog = st.progress(0, text="Processing images...")
+    for idx, f in enumerate(files):
+        orig = Image.open(f).convert("RGBA")
         if do_remove and REMBG_AVAILABLE:
             try:
-                session = get_session()
-                no_bg = remove(original, session=session)
+                sess = get_session()
+                cut = remove(orig, session=sess)
             except:
-                no_bg = original
+                cut = orig
         else:
-            no_bg = original
+            cut = orig
 
-        # Apply color background
-        w,h = no_bg.size
+        w,h = cut.size
         m = max(w,h)
-        m = m + int(m*0.05*2)
-        bg_base = Image.new("RGBA", (m,m), (r,g,b,255))
-        bg_base.paste(no_bg, ((m-w)//2, (m-h)//2), no_bg)
+        m = m + int(m*0.08)
+        base = Image.new("RGBA", (m,m), (r,g,b,255))
+        base.paste(cut, ((m-w)//2, (m-h)//2), cut)
 
         if "2000" in size:
-            final = bg_base.resize((2000,2000), Image.LANCZOS)
+            final = base.resize((2000,2000), Image.LANCZOS)
+        elif "1080" in size:
+            final = base.resize((1080,1080), Image.LANCZOS)
         else:
-            final = bg_base
+            final = base
 
         final_rgb = final.convert("RGB")
-        processed_images.append((file.name, final_rgb))
-        progress.progress((i+1)/len(uploaded_files), text=f"Processing {i+1}/{len(uploaded_files)}")
+        processed.append((f.name, final_rgb))
+        prog.progress((idx+1)/len(files), text=f"Processed {idx+1}/{len(files)}")
 
     st.divider()
-    st.markdown(f"### ✨ Results - {len(processed_images)} Images • BG: {st.session_state.bg_color}")
+    st.markdown(f"#### Results • {len(processed)} Images • {st.session_state.bg_color.upper()}")
 
-    # Show in grid
-    grid_cols = st.columns(4)
-    for idx, (name, img) in enumerate(processed_images):
-        with grid_cols[idx % 4]:
-            st.image(img, caption=name, use_container_width=True)
+    g_cols = st.columns(4)
+    for i, (name, img) in enumerate(processed):
+        with g_cols[i % 4]:
+            st.image(img, caption=name[:20], use_container_width=True)
 
-    # ZIP Download
-    zip_buf = io.BytesIO()
-    with zipfile.ZipFile(zip_buf, "w") as zip_file:
-        for name, img in processed_images:
-            img_buf = io.BytesIO()
-            img.save(img_buf, format="JPEG", quality=95)
-            zip_file.writestr(f"pixelperfect_{st.session_state.bg_color.replace('#','')}_{name.rsplit('.',1)[0]}.jpg", img_buf.getvalue())
+    # ZIP
+    zbuf = io.BytesIO()
+    with zipfile.ZipFile(zbuf, "w") as z:
+        for name, img in processed:
+            b = io.BytesIO()
+            img.save(b, format="JPEG", quality=96)
+            z.writestr(f"pureframe_{st.session_state.bg_color.replace('#','')}_{name.rsplit('.',1)[0]}.jpg", b.getvalue())
 
-    st.download_button(
-        label=f"⬇ Download All {len(processed_images)} Images as ZIP",
-        data=zip_buf.getvalue(),
-        file_name=f"pixelperfect_bulk_{st.session_state.bg_color.replace('#','')}.zip",
-        mime="application/zip",
-        use_container_width=True,
-        type="primary"
-    )
+    st.download_button(f"⬇ Download {len(processed)} Images as ZIP", data=zbuf.getvalue(), file_name=f"pureframe_studio_{st.session_state.bg_color.replace('#','')}.zip", mime="application/zip", use_container_width=True)
     st.balloons()
-
 else:
-    st.info("👆 Upor theke ekbare 10-20 ta image select koro - Ctrl diye multiple select kora jabe!")
+    st.markdown("""
+    <div style="text-align:center; padding:80px; background:white; border-radius:24px; border:2px dashed #eee;">
+        <div style="font-size:64px">◐</div>
+        <h3 style="margin:10px 0">Drop your product images to start</h3>
+        <p style="color:#888">Supports PNG, JPG, WEBP • Bulk upload supported • Up to 50 images</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<br><br><div style='text-align:center; color:#aaa; font-size:12px;'>© 2026 PureFrame Studio • Professional Amazon Product Studio • All Rights Reserved</div>", unsafe_allow_html=True)
