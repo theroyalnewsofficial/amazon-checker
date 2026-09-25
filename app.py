@@ -4,50 +4,9 @@ import io
 import zipfile
 import os
 
-# --- SAFE AI IMPORT ---
-try:
-    from rembg import remove, new_session
-    REMBG_AVAILABLE = True
-    @st.cache_resource
-    def get_session():
-        # isnet-general-use = Product এর জন্য সবচেয়ে Smooth & Accurate
-        return new_session("isnet-general-use")
-
-    def remove_bg_smooth(image):
-        try:
-            session = get_session()
-            # Alpha Matting = Edge Smooth
-            result = remove(
-                image,
-                session=session,
-                alpha_matting=True,
-                alpha_matting_foreground_threshold=240,
-                alpha_matting_background_threshold=10,
-                alpha_matting_erode_size=10
-            )
-            # Safety: যদি 90% কেটে যায়, মানে ভুল কেটেছে, Original ফেরত দাও
-            if result.getbbox():
-                bbox = result.getbbox()
-                if bbox:
-                    area = (bbox[2]-bbox[0]) * (bbox[3]-bbox[1])
-                    total = image.size[0] * image.size[1]
-                    if area < (total * 0.05):
-                        return image
-            else:
-                return image
-            return result
-        except:
-            return image
-
-except:
-    REMBG_AVAILABLE = False
-    def remove_bg_smooth(image):
-        return image
-
-# --- PAGE CONFIG ---
 st.set_page_config(
     page_title="PureFrame Studio",
-    page_icon="logo.png" if os.path.exists("logo.png") else "⬢",
+    page_icon="⬢",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -55,122 +14,127 @@ st.set_page_config(
 if 'bg_color' not in st.session_state:
     st.session_state.bg_color = "#FFFFFF"
 
-def set_color(c):
-    st.session_state.bg_color = c
+# --- SAFE IMPORT ---
+REMBG_AVAILABLE = False
+try:
+    from rembg import remove, new_session
+    REMBG_AVAILABLE = True
+    @st.cache_resource
+    def get_session():
+        # u2net = Lightest + Stable for Streamlit Cloud
+        return new_session("u2net")
+except Exception as e:
+    REMBG_AVAILABLE = False
 
-# --- WHITE LABEL CSS - HIDE ALL STREAMLIT BRANDING ---
+def remove_bg_safe(image):
+    if not REMBG_AVAILABLE:
+        return image
+    try:
+        sess = get_session()
+        # Smooth cut with alpha matting
+        result = remove(
+            image,
+            session=sess,
+            alpha_matting=True,
+            alpha_matting_foreground_threshold=240,
+            alpha_matting_background_threshold=10,
+            alpha_matting_erode_size=10
+        )
+        # Safety: if too much cut, return original
+        if not result.getbbox():
+            return image
+        return result
+    except Exception:
+        return image
+
+# --- CSS ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-    #MainMenu, footer,.stDeployButton, header, [data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {display: none!important; visibility: hidden!important; height: 0!important;}
- .stApp > header {display: none!important;}
+    #MainMenu, footer,.stDeployButton, header, [data-testid="stHeader"], [data-testid="stToolbar"] {display: none!important;}
+.stApp > header {display: none!important;}
     section[data-testid="stSidebar"] {display: none!important;}
-
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
- .stApp { background: #f8f8f7; }
- .navbar { display:flex; justify-content:space-between; align-items:center; padding: 12px 0 28px 0; border-bottom: 1px solid #eee; margin-bottom: 28px;}
- .hero { background: #0e0e0e; padding: 64px 40px; border-radius: 32px; text-align: center; margin-bottom: 32px; color: white;}
- .hero h1 { font-size: 50px; font-weight: 800; line-height: 1.05; margin:0; color: white; letter-spacing: -1.5px; }
- .hero h1 i { font-style: normal; color: #a3a3a3; font-weight: 300; }
- .hero p { color: #888; font-size: 15px; margin-top: 14px;}
- .swatch { width: 46px; height: 46px; border-radius: 12px; border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.12); margin: 0 auto; cursor: pointer; transition: 0.2s; }
- .swatch:hover { transform: scale(1.08); }
- .stButton>button { background:#111; color:white; border-radius:12px; height:48px; font-weight:600; border:none; width:100%;}
- .stDownloadButton>button { background: #111; color: white; border-radius: 12px; height: 54px; font-weight: 700; width:100%;}
+.stApp { background: #f8f8f7; }
+.hero { background: #0e0e0e; padding: 54px 40px; border-radius: 28px; text-align: center; margin-bottom: 24px; color: white;}
+.hero h1 { font-size: 46px; font-weight: 800; line-height: 1.05; margin:0; color: white;}
+.swatch { width: 44px; height: 44px; border-radius: 10px; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.12); margin: 0 auto; cursor: pointer; }
+.stButton>button { background:#111; color:white; border-radius:10px; height:44px; font-weight:600; width:100%;}
+.stDownloadButton>button { background: #111; color: white; border-radius: 10px; height: 52px; font-weight: 700; width:100%;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- NAVBAR WITH LOGO ---
+# --- NAVBAR ---
 try:
-    logo_img = Image.open("logo.png")
-    c1, c2 = st.columns([0.15, 0.85])
-    with c1:
-        st.image(logo_img, use_container_width=True)
-    with c2:
-        st.markdown('<div style="padding-top: 14px; display:flex; justify-content:space-between; align-items:center;"><div><span style="font-size:22px; font-weight:800; color:#111; letter-spacing:-0.8px;">PureFrame</span> <span style="font-size:22px; font-weight:300; color:#888;">STUDIO</span></div><div style="color:#888; font-size:11px; font-weight:700; letter-spacing:1.2px; border:1px solid #e5e5e5; padding:6px 12px; border-radius:20px; background:white;">AMAZON • SHOPIFY READY</div></div>', unsafe_allow_html=True)
+    if os.path.exists("logo.png"):
+        logo_img = Image.open("logo.png")
+        c1, c2 = st.columns([0.12, 0.88])
+        with c1: st.image(logo_img, use_container_width=True)
+        with c2: st.markdown('<div style="padding-top:10px;"><span style="font-size:20px; font-weight:800;">PureFrame</span> <span style="font-weight:300; color:#888;">STUDIO</span></div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div style="display:flex; justify-content:space-between; padding: 10px 0 20px 0; border-bottom:1px solid #eee; margin-bottom:20px;"><div style="font-size:20px; font-weight:800;">PureFrame <span style="font-weight:300; color:#888;">STUDIO</span></div><div style="font-size:10px; font-weight:700; color:#888; border:1px solid #eee; padding:5px 10px; border-radius:20px; background:white;">AMAZON READY</div></div>', unsafe_allow_html=True)
 except:
-    st.markdown('<div class="navbar"><div style="font-size:22px; font-weight:800; color:#111;">PureFrame <span style="font-weight:300; color:#888;">STUDIO</span></div><div style="color:#888; font-size:11px; font-weight:700; letter-spacing:1.2px; border:1px solid #e5e5e5; padding:6px 12px; border-radius:20px; background:white;">AMAZON • SHOPIFY READY</div></div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:20px; font-weight:800; padding-bottom:20px;">PureFrame <span style="font-weight:300;">STUDIO</span></div>', unsafe_allow_html=True)
 
-st.markdown('<div class="hero"><h1>Product Photos,<br><i>Studio Ready.</i></h1><p>AI background removal • Custom studio color • 2000x2000 Amazon compliant export</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="hero"><h1>Product Photos,<br>Studio Ready.</h1><p style="color:#888; font-size:14px; margin-top:10px;">AI removal • Custom color • 2000x2000 Amazon compliant</p></div>', unsafe_allow_html=True)
 
 # --- CONTROLS ---
-top1, top2, top3 = st.columns([1.3, 1, 1], gap="large")
+top1, top2, top3 = st.columns([1.3, 1, 1], gap="medium")
 with top1:
-    files = st.file_uploader("Upload images", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, label_visibility="collapsed")
-    if files:
-        st.caption(f"✓ {len(files)} images selected • Bulk enabled")
-
+    files = st.file_uploader("Upload", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, label_visibility="collapsed")
 with top2:
     st.markdown("**Background**")
     cols = st.columns(5)
     colors = ["#FFFFFF","#000000","#F2F2F0","#3B82F6","#22C55E"]
-    names = ["White","Black","Studio","Blue","Green"]
-    for col, clr, nm in zip(cols, colors, names):
+    for col, clr in zip(cols, colors):
         with col:
-            if st.button(" ", key=f"cl_{clr}"):
-                set_color(clr); st.rerun()
-            st.markdown(f"<div class='swatch' style='background:{clr}'></div><div style='text-align:center; font-size:10px; font-weight:600; color:#999; margin-top:6px'>{nm}</div>", unsafe_allow_html=True)
+            if st.button(" ", key=f"c_{clr}"):
+                st.session_state.bg_color = clr
+                st.rerun()
+            st.markdown(f"<div class='swatch' style='background:{clr}'></div>", unsafe_allow_html=True)
     picked = st.color_picker("Custom", st.session_state.bg_color, label_visibility="collapsed")
     if picked!= st.session_state.bg_color:
         st.session_state.bg_color = picked
         st.rerun()
-
 with top3:
-    st.markdown("**Export**")
-    size = st.selectbox("Size", ["2000x2000 (Amazon)", "1080x1080 (Square)", "Original"], label_visibility="collapsed")
-    do_remove = st.toggle("AI Smooth Removal", value=True, disabled=not REMBG_AVAILABLE)
-    st.markdown(f"<div style='margin-top:10px; padding:10px; background:{st.session_state.bg_color}; border:1px solid #eee; border-radius:10px; text-align:center; font-weight:700; font-size:12px; color:{'#000' if st.session_state.bg_color.upper() in ['#FFFFFF','#F2F2F0'] else '#fff'}'>{st.session_state.bg_color.upper()} • {size.split(' ')[0]}</div>", unsafe_allow_html=True)
+    size = st.selectbox("Size", ["2000x2000", "1080x1080", "Original"], label_visibility="collapsed")
+    do_remove = st.toggle("AI Removal", value=True)
 
-# --- PROCESSING WITH SMOOTH CUT ---
+# --- PROCESS ---
 if files:
     hex_c = st.session_state.bg_color.lstrip('#')
     r,g,b = tuple(int(hex_c[i:i+2], 16) for i in (0,2,4))
     processed = []
-    prog = st.progress(0, text="Processing with smooth edge...")
+    prog = st.progress(0)
 
     for idx, f in enumerate(files):
         orig = Image.open(f).convert("RGBA")
-        cut = remove_bg_smooth(orig) if do_remove else orig
-
+        cut = remove_bg_safe(orig) if do_remove else orig
         w,h = cut.size
-        m = max(w,h)
-        m = m + int(m*0.08)
+        m = max(w,h) + int(max(w,h)*0.08)
         base = Image.new("RGBA", (m,m), (r,g,b,255))
         base.paste(cut, ((m-w)//2, (m-h)//2), cut)
-
         if "2000" in size:
             final = base.resize((2000,2000), Image.LANCZOS)
         elif "1080" in size:
             final = base.resize((1080,1080), Image.LANCZOS)
         else:
             final = base
-
         processed.append((f.name, final.convert("RGB")))
-        prog.progress((idx+1)/len(files), text=f"Processing {idx+1}/{len(files)} - Smooth Edge")
+        prog.progress((idx+1)/len(files))
 
     st.divider()
-    st.markdown(f"#### Processed • {len(processed)} Images • Smooth Cut Applied")
-    g_cols = st.columns(4)
+    cols = st.columns(4)
     for i, (name, img) in enumerate(processed):
-        with g_cols[i % 4]:
-            st.image(img, caption=name[:22], use_container_width=True)
+        with cols[i % 4]:
+            st.image(img, caption=name[:18], use_container_width=True)
 
     zbuf = io.BytesIO()
     with zipfile.ZipFile(zbuf, "w") as z:
         for name, img in processed:
             b = io.BytesIO()
-            img.save(b, format="JPEG", quality=96, optimize=True)
-            z.writestr(f"pureframe_{st.session_state.bg_color.replace('#','')}_{name.rsplit('.',1)[0]}.jpg", b.getvalue())
+            img.save(b, format="JPEG", quality=95)
+            z.writestr(f"pureframe_{name.rsplit('.',1)[0]}.jpg", b.getvalue())
 
-    st.download_button(f"Download {len(processed)} Images as ZIP", data=zbuf.getvalue(), file_name=f"pureframe_studio_{st.session_state.bg_color.replace('#','')}.zip", mime="application/zip", use_container_width=True)
-    st.balloons()
+    st.download_button(f"Download {len(processed)} Images ZIP", data=zbuf.getvalue(), file_name="pureframe.zip", mime="application/zip", use_container_width=True)
 else:
-    st.markdown("""
-    <div style="text-align:center; padding:90px 40px; background:white; border-radius:24px; border:1.5px dashed #e5e5e5;">
-        <div style="width:64px; height:64px; background:#111; color:white; border-radius:16px; display:flex; align-items:center; justify-content:center; margin:0 auto; font-size:28px; font-weight:800;">P</div>
-        <h3 style="margin:18px 0 8px 0; color:#111; font-weight:700;">Drop product images to start</h3>
-        <p style="color:#999; font-size:13px;">PNG, JPG, WEBP • Bulk up to 50 images • Smooth edge technology</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("<br><div style='text-align:center; color:#bbb; font-size:11px;'>© 2026 PureFrame Studio • Professional Product Studio</div>", unsafe_allow_html=True)
+    st.markdown('<div style="text-align:center; padding:70px; background:white; border-radius:20px; border:1.5px dashed #ddd;">Drop images to start<br><span style="color:#999; font-size:12px;">Bulk up to 50 images</span></div>', unsafe_allow_html=True)
