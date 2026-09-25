@@ -1,2 +1,5 @@
 streamlit
 pillow
+rembg
+onnxruntime
+numpy
