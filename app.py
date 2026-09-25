@@ -2,104 +2,122 @@ import streamlit as st
 from PIL import Image
 import io
 
-st.set_page_config(
-    page_title="PixelPerfect - Amazon Image Studio",
-    page_icon="✦",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+# Try to import rembg, if fails app will still work
+try:
+    from rembg import remove
+    REMBG_AVAILABLE = True
+except:
+    REMBG_AVAILABLE = False
 
-# --- HIDE ALL STREAMLIT BRANDING ---
+st.set_page_config(page_title="PixelPerfect Pro - Color Background", page_icon="✦", layout="wide", initial_sidebar_state="collapsed")
+
+# --- PRO DESIGN - NO LOGO ---
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
-  .stDeployButton {display:none;} [data-testid="stToolbar"] {visibility: hidden!important;}
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+ .stDeployButton {display:none;}
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-  .hero { background: linear-gradient(135deg, #0f0f0f 0%, #2a2a2a 100%); color: white; padding: 60px 40px; border-radius: 20px; text-align: center; margin-bottom: 30px; }
-  .hero h1 { font-size: 48px; font-weight: 800; margin-bottom: 10px; }
-  .hero p { font-size: 18px; color: #a1a1a1; max-width: 600px; margin: 0 auto; }
-  .badge { background: #FF9900; color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; }
-  .stButton>button { background: #111111; color: white; border-radius: 12px; height: 54px; font-weight: 600; border: none; }
-  .stButton>button:hover { background: #FF9900; color: white; }
-  .result-card { background: white; border: 1px solid #eeeeee; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+ .hero { background: linear-gradient(135deg, #0f0f0f 0%, #2a2a2a 100%); color: white; padding: 50px 40px; border-radius: 20px; text-align: center; margin-bottom: 25px; }
+ .hero h1 { font-size: 44px; font-weight: 800; }
+ .hero p { color: #a1a1a1; }
+ .stButton>button { background: #111; color: white; border-radius: 12px; height: 54px; font-weight: 600; border:none; }
+ .stButton>button:hover { background: #FF9900; color: white; }
+ .card { background: white; border: 1px solid #eee; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
 <div class="hero">
-    <span class="badge">V2.1 PRO • LIGHTNING FAST</span>
-    <h1>Make Your Product<br>Amazon Ready in 1 Click.</h1>
-    <p>Auto 2000x2000px resizer, Pure White BG converter & 100% Amazon Compliance checker. No Photoshop needed.</p>
+    <h1>Background Remover + Custom Color</h1>
+    <p>Remove background and apply any color you want. Perfect for Amazon, Shopify, eBay & Social Media.</p>
 </div>
 """, unsafe_allow_html=True)
 
-col_main, col_info = st.columns([2.2, 1])
-with col_main:
-    st.markdown("##### Upload Product Images")
-    uploaded_files = st.file_uploader("", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, label_visibility="collapsed")
-    op1, op2 = st.columns(2)
-    with op1:
-        white_bg = st.toggle("⬜ Make Pure White Background", value=True)
-    with op2:
-        resize_2000 = st.toggle("⬜ Convert to 2000x2000", value=True)
+# --- CONTROLS ---
+c1, c2, c3 = st.columns([1.5, 1, 1])
+with c1:
+    uploaded_file = st.file_uploader("Upload Product Image", type=["png","jpg","jpeg","webp"])
+with c2:
+    # COLOR PICKER - MAIN FEATURE
+    bg_color = st.color_picker("Choose Background Color", "#FFFFFF")
+    st.caption(f"Selected: {bg_color}")
+with c3:
+    size_option = st.selectbox("Output Size", ["2000x2000 (Amazon)", "1000x1000", "Original Size"])
+    remove_bg_toggle = st.toggle("✦ Remove Background (AI)", value=True, disabled=not REMBG_AVAILABLE)
 
-with col_info:
-    st.markdown("""
-    <div class="result-card">
-        <h4 style="margin-top:0;">Amazon TOS 2025</h4>
-        <p style="font-size:14px; color:#666; line-height: 1.8;">
-        ✅ Pure White BG #FFFFFF<br>✅ 2000x2000px Minimum<br>✅ 85% Product Fill<br>✅ JPEG, sRGB<br>✅ File < 10MB
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+if not REMBG_AVAILABLE:
+    st.warning("AI Background Remover is installing... It will be ready in 2-3 minutes after deploy. Please wait and refresh.")
 
-if uploaded_files:
-    st.divider()
-    for file in uploaded_files:
-        c1, c2, c3 = st.columns([1, 1, 1.2], gap="large")
-        original = Image.open(file).convert("RGB")
+if uploaded_file:
+    col1, col2 = st.columns(2, gap="large")
+    original = Image.open(uploaded_file).convert("RGBA")
 
-        with c1:
-            st.markdown(f"<div class='result-card'><p style='font-weight:600'>Original</p>", unsafe_allow_html=True)
-            st.image(original, use_container_width=True)
-            st.markdown(f"<p style='font-size:12px; color:#888;'>{file.name}</p></div>", unsafe_allow_html=True)
+    with col1:
+        st.markdown("<div class='card'><b>Original Image</b>", unsafe_allow_html=True)
+        st.image(original, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        # --- PRO PROCESSING (No AI, Fast & Stable) ---
-        final = original
-        if white_bg:
-            # Simple pro white bg: create new white image and paste with logic
-            # For pure white BG we just ensure final bg is white by adding padding
-            pass # Logic below handles it
+    # --- PROCESSING ---
+    if remove_bg_toggle and REMBG_AVAILABLE:
+        with st.spinner("AI is removing background..."):
+            no_bg = remove(original)
+    else:
+        no_bg = original
 
-        if resize_2000:
-            w, h = original.size
-            max_side = max(w, h)
-            square = Image.new("RGB", (max_side, max_side), (255, 255, 255))
-            square.paste(original, ((max_side - w)//2, (max_side - h)//2))
-            final = square.resize((2000, 2000), Image.LANCZOS)
-        else:
-            final = original
+    # Convert hex color to RGB
+    hex_color = bg_color.lstrip('#')
+    r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
-        # Force white BG
-        if white_bg and final.mode == "RGB":
-            # Already white padded
-            pass
+    # Create new background with selected color
+    background = Image.new("RGBA", no_bg.size, (r, g, b, 255))
+    final_rgba = Image.alpha_composite(background, no_bg)
 
-        with c2:
-            st.markdown("<div class='result-card'><p style='font-weight:600'>Amazon Ready ✅</p>", unsafe_allow_html=True)
-            st.image(final, use_container_width=True)
-            st.markdown(f"<p style='font-size:12px; color:#22c55e; font-weight:600;'>✔ 100% Compliant • {final.size[0]}x{final.size[1]}</p></div>", unsafe_allow_html=True)
+    # Resize logic
+    if size_option == "2000x2000 (Amazon)":
+        w, h = final_rgba.size
+        max_side = max(w, h)
+        square = Image.new("RGBA", (max_side, max_side), (r, g, b, 255))
+        square.paste(final_rgba, ((max_side - w)//2, (max_side - h)//2), final_rgba)
+        final = square.resize((2000, 2000), Image.LANCZOS)
+    elif size_option == "1000x1000":
+        w, h = final_rgba.size
+        max_side = max(w, h)
+        square = Image.new("RGBA", (max_side, max_side), (r, g, b, 255))
+        square.paste(final_rgba, ((max_side - w)//2, (max_side - h)//2), final_rgba)
+        final = square.resize((1000, 1000), Image.LANCZOS)
+    else:
+        final = final_rgba
 
-        with c3:
-            st.markdown("<div class='result-card'>", unsafe_allow_html=True)
-            st.markdown("**Ready to Upload**")
-            buf = io.BytesIO()
-            final.save(buf, format="JPEG", quality=98, subsampling=0)
-            st.download_button(label="Download JPG", data=buf.getvalue(), file_name=f"AMZ_READY_{file.name.split('.')[0]}.jpg", mime="image/jpeg", use_container_width=True, key=f"btn_{file.name}")
-            st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
+    final_rgb = final.convert("RGB")
+
+    with col2:
+        st.markdown(f"<div class='card'><b>Result with {bg_color} Background</b>", unsafe_allow_html=True)
+        st.image(final_rgb, use_container_width=True)
+
+        buf = io.BytesIO()
+        final_rgb.save(buf, format="JPEG", quality=95)
+
+        st.download_button(
+            label=f"Download JPG ({bg_color})",
+            data=buf.getvalue(),
+            file_name=f"custom_bg_{bg_color.replace('#','')}_{uploaded_file.name.split('.')[0]}.jpg",
+            mime="image/jpeg",
+            use_container_width=True
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # --- COLOR PRESETS FOR AMAZON / ECOM ---
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("##### 🔥 Quick Presets:")
+    p1, p2, p3, p4, p5 = st.columns(5)
+    with p1: st.markdown("⬜ **#FFFFFF** - Amazon Main")
+    with p2: st.markdown("⬛ **#000000** - Premium")
+    with p3: st.markdown("🟦 **#3B82F6** - Shopify")
+    with p4: st.markdown("🟨 **#FBBF24** - Lifestyle")
+    with p5: st.markdown(f"🎨 **{bg_color}** - Custom")
+
 else:
-    st.markdown("""<div style="text-align:center; padding: 40px; background: white; border-radius: 16px; border: 1px solid #eee; margin-top:20px;"><p style="font-size:40px;">📤</p><p style="font-weight:600;">Drop your images here to start</p></div>""", unsafe_allow_html=True)
+    st.info("👆 Upload an image and pick any background color you want!")
 
-st.markdown("<br><br><div style='text-align:center; color:#aaa; font-size:13px;'>© 2026 PixelPerfect Studio • Built for Amazon Sellers Worldwide</div>", unsafe_allow_html=True)
+st.markdown("<br><center style='color:#aaa; font-size:12px;'>© 2026 PixelPerfect Pro • Background Remover + Custom Color Tool</center>", unsafe_allow_html=True)
