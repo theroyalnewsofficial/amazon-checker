@@ -14,16 +14,14 @@ st.set_page_config(
 if 'bg_color' not in st.session_state:
     st.session_state.bg_color = "#FFFFFF"
 
-# --- SAFE IMPORT ---
 REMBG_AVAILABLE = False
 try:
     from rembg import remove, new_session
     REMBG_AVAILABLE = True
     @st.cache_resource
     def get_session():
-        # u2net = Lightest + Stable for Streamlit Cloud
         return new_session("u2net")
-except Exception as e:
+except:
     REMBG_AVAILABLE = False
 
 def remove_bg_safe(image):
@@ -31,23 +29,14 @@ def remove_bg_safe(image):
         return image
     try:
         sess = get_session()
-        # Smooth cut with alpha matting
-        result = remove(
-            image,
-            session=sess,
-            alpha_matting=True,
-            alpha_matting_foreground_threshold=240,
-            alpha_matting_background_threshold=10,
-            alpha_matting_erode_size=10
-        )
-        # Safety: if too much cut, return original
+        result = remove(image, session=sess, alpha_matting=True, alpha_matting_foreground_threshold=240, alpha_matting_background_threshold=10, alpha_matting_erode_size=10)
         if not result.getbbox():
             return image
         return result
-    except Exception:
+    except:
         return image
 
-# --- CSS ---
+# --- MOBILE RESPONSIVE CSS ---
 st.markdown("""
 <style>
     #MainMenu, footer,.stDeployButton, header, [data-testid="stHeader"], [data-testid="stToolbar"] {display: none!important;}
@@ -57,9 +46,32 @@ st.markdown("""
 .stApp { background: #f8f8f7; }
 .hero { background: #0e0e0e; padding: 54px 40px; border-radius: 28px; text-align: center; margin-bottom: 24px; color: white;}
 .hero h1 { font-size: 46px; font-weight: 800; line-height: 1.05; margin:0; color: white;}
-.swatch { width: 44px; height: 44px; border-radius: 10px; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.12); margin: 0 auto; cursor: pointer; }
+.swatch { width: 44px; height: 44px; border-radius: 10px; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.12); margin: 0 auto;}
 .stButton>button { background:#111; color:white; border-radius:10px; height:44px; font-weight:600; width:100%;}
-.stDownloadButton>button { background: #111; color: white; border-radius: 10px; height: 52px; font-weight: 700; width:100%;}
+.stDownloadButton>button { background: #111; color: white; border-radius: 12px; height: 54px; font-weight: 700; width:100%;}
+
+    /* --- MOBILE RESPONSIVE FIX --- */
+    @media (max-width: 768px) {
+       .block-container { padding: 1rem 1rem 2rem 1rem!important; }
+       .hero { padding: 32px 20px!important; border-radius: 20px!important; margin-bottom: 16px!important;}
+       .hero h1 { font-size: 30px!important; line-height: 1.1!important;}
+       .hero p { font-size: 13px!important;}
+
+        /* Columns stack on mobile */
+        [data-testid="column"] {
+            width: 100%!important;
+            flex: 1 1 100%!important;
+            min-width: 100%!important;
+        }
+        [data-testid="stHorizontalBlock"] {
+            flex-direction: column!important;
+            gap: 1.5rem!important;
+        }
+        /* Make swatches bigger for touch */
+       .swatch { width: 54px!important; height: 54px!important;}
+       .stButton>button { height: 52px!important; font-size: 16px!important;}
+       .stDownloadButton>button { height: 60px!important; font-size: 17px!important;}
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -80,9 +92,9 @@ st.markdown('<div class="hero"><h1>Product Photos,<br>Studio Ready.</h1><p style
 # --- CONTROLS ---
 top1, top2, top3 = st.columns([1.3, 1, 1], gap="medium")
 with top1:
-    files = st.file_uploader("Upload", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, label_visibility="collapsed")
+    files = st.file_uploader("Upload Images", type=["png","jpg","jpeg","webp"], accept_multiple_files=True, label_visibility="collapsed")
 with top2:
-    st.markdown("**Background**")
+    st.markdown("**Background Color**")
     cols = st.columns(5)
     colors = ["#FFFFFF","#000000","#F2F2F0","#3B82F6","#22C55E"]
     for col, clr in zip(cols, colors):
@@ -96,7 +108,7 @@ with top2:
         st.session_state.bg_color = picked
         st.rerun()
 with top3:
-    size = st.selectbox("Size", ["2000x2000", "1080x1080", "Original"], label_visibility="collapsed")
+    size = st.selectbox("Export Size", ["2000x2000", "1080x1080", "Original"], label_visibility="collapsed")
     do_remove = st.toggle("AI Removal", value=True)
 
 # --- PROCESS ---
@@ -123,9 +135,11 @@ if files:
         prog.progress((idx+1)/len(files))
 
     st.divider()
-    cols = st.columns(4)
+    st.markdown(f"#### Result - {len(processed)} Images")
+    # On mobile, show 2 columns only for better view
+    cols = st.columns(2)
     for i, (name, img) in enumerate(processed):
-        with cols[i % 4]:
+        with cols[i % 2]:
             st.image(img, caption=name[:18], use_container_width=True)
 
     zbuf = io.BytesIO()
@@ -137,4 +151,4 @@ if files:
 
     st.download_button(f"Download {len(processed)} Images ZIP", data=zbuf.getvalue(), file_name="pureframe.zip", mime="application/zip", use_container_width=True)
 else:
-    st.markdown('<div style="text-align:center; padding:70px; background:white; border-radius:20px; border:1.5px dashed #ddd;">Drop images to start<br><span style="color:#999; font-size:12px;">Bulk up to 50 images</span></div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align:center; padding:70px 20px; background:white; border-radius:20px; border:1.5px dashed #ddd;">Drop images to start<br><span style="color:#999; font-size:12px;">Mobile & Desktop Ready • Bulk up to 50 images</span></div>', unsafe_allow_html=True)
