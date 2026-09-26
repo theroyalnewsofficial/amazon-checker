@@ -50,105 +50,92 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR ---
 with st.sidebar:
     st.markdown("### PureFrame STUDIO")
-    st.caption("Professional E-commerce Photo Editor • v2.0")
+    st.caption("v2.0 • Professional Editor")
 
     files = st.file_uploader("Upload product images", type=["png","jpg","jpeg","webp"], accept_multiple_files=True)
-    st.caption("200MB per file • PNG, JPG, WEBP")
 
     st.divider()
-
-    # --- AGer moto Toggle System ---
     st.markdown("**Background Control**")
-    ai_remove = st.toggle("✨ AI Remove Background", value=True, help="ON করলে Background Remove হবে, OFF করলে Original ফিরে আসবে")
+    ai_remove = st.toggle("✨ AI Remove Background", value=True)
 
     if ai_remove:
-        st.markdown("**Studio Background Color**")
-        presets = ["#FFFFFF","#EF4444","#000000","#22C55E","#F5F5F3","#F59E0B","#3B82F6","#E9D5FF"]
+        st.markdown("**Studio Background**")
+        presets = ["#FFFFFF","#000000","#F5F5F3","#3B82F6","#EF4444","#22C55E","#F59E0B","#E9D5FF"]
         cols = st.columns(4)
         for i, clr in enumerate(presets):
-            col = cols[i % 4]
-            with col:
+            with cols[i % 4]:
                 if st.button(" ", key=f"sw_{clr}_{i}"):
                     st.session_state.bg_color = clr
-                border = "2px solid #111" if st.session_state.bg_color == clr else "2px solid white"
-                st.markdown(f"<div style='width:100%; height:40px; background:{clr}; border-radius:10px; border:{border};'></div>", unsafe_allow_html=True)
+                b = "2px solid #111" if st.session_state.bg_color==clr else "1px solid #eee"
+                st.markdown(f"<div style='width:100%; height:38px; background:{clr}; border-radius:8px; border:{b};'></div>", unsafe_allow_html=True)
 
-        custom = st.color_picker("Custom color", st.session_state.bg_color, label_visibility="collapsed")
+        custom = st.color_picker("Custom", st.session_state.bg_color, label_visibility="collapsed")
         if custom!= st.session_state.bg_color:
             st.session_state.bg_color = custom
-        st.info(f"BG Color: {st.session_state.bg_color}")
+        st.success(f"BG: {st.session_state.bg_color}")
     else:
-        st.warning("Original Background Mode - Original image দেখাবে")
+        st.info("Original Mode - Original background will show")
 
-    st.divider()
-    size_opt = st.selectbox("Output Size", ["2000x2000 - Amazon", "1080x1080 - Instagram", "1500x1500 - Shopify"], index=0)
-    quality = st.slider("Quality", 80, 100, 89)
+    size_opt = st.selectbox("Output Size", ["2000x2000 - Amazon", "1080x1080 - Instagram"], index=0)
 
-# --- MAIN ---
-mode_text = f"AI Removed + {st.session_state.bg_color}" if ai_remove else "Original Background"
+mode_text = "AI Removed" if ai_remove else "Original"
 st.markdown(f"""
-<div style="background: linear-gradient(135deg, #0e0e0e 0%, #2a2a2a 100%); padding: 32px; border-radius: 20px; color: white; margin-bottom: 20px;">
-    <h2 style="margin:0; font-weight:800;">Product photos,<br>ready for store.</h2>
-    <p style="color:#aaa; margin-top:8px; font-size:13px;">Mode: {mode_text} • Size: {size_opt.split(' - ')[0]}</p>
+<div style="background:#111; padding:28px; border-radius:16px; color:white; margin-bottom:16px;">
+    <h2 style="margin:0;">Product photos, ready for store.</h2>
+    <p style="color:#888; font-size:13px; margin-top:6px;">Mode: {mode_text} • BG: {st.session_state.bg_color if ai_remove else 'Original'}</p>
 </div>
 """, unsafe_allow_html=True)
 
 if files:
     file_names = [f.name for f in files]
-    # Only run AI once when files change
     if st.session_state.last_files!= file_names:
         st.session_state.last_files = file_names
         st.session_state.cached_cuts = []
         st.session_state.cached_originals = []
-        prog = st.progress(0, text="Processing images...")
+        prog = st.progress(0, text="Processing...")
         for idx, f in enumerate(files):
-            orig = Image.open(f).convert("RGBA")
-            st.session_state.cached_originals.append((f.name, orig))
-            cut = remove_bg_safe(orig)
+            orig_rgba = Image.open(f).convert("RGBA")
+            orig_rgb = Image.open(f).convert("RGB")
+            st.session_state.cached_originals.append((f.name, orig_rgb))
+            cut = remove_bg_safe(orig_rgba)
             st.session_state.cached_cuts.append((f.name, cut))
             prog.progress((idx+1)/len(files))
         prog.empty()
 
     processed = []
     if ai_remove:
-        # AI ON: Remove + New Color BG
         hex_c = st.session_state.bg_color.lstrip('#')
         r,g,b = tuple(int(hex_c[i:i+2], 16) for i in (0,2,4))
         for name, cut in st.session_state.cached_cuts:
             w,h = cut.size
-            m = max(w,h) + int(max(w,h)*0.10)
+            m = max(w,h) + int(max(w,h)*0.1)
             base = Image.new("RGBA", (m,m), (r,g,b,255))
             base.paste(cut, ((m-w)//2, (m-h)//2), cut)
-            final_size = int(size_opt.split("x")[0])
-            final = base.resize((final_size, final_size), Image.LANCZOS)
+            final = base.resize((2000,2000), Image.LANCZOS)
             processed.append((name, final.convert("RGB")))
     else:
-        # AI OFF: Original BG ফিরে আসবে
-        for name, orig in st.session_state.cached_originals:
-            w,h = orig.size
-            m = max(w,h) + int(max(w,h)*0.10)
-            base = Image.new("RGBA", (m,m), (255,255,255,255))
-            base.paste(orig, ((m-w)//2, (m-h)//2), orig)
-            final_size = int(size_opt.split("x")[0])
-            final = base.resize((final_size, final_size), Image.LANCZOS)
-            processed.append((name, final.convert("RGB")))
+        # FIXED: Original image will NOT disappear now
+        for name, orig_rgb in st.session_state.cached_originals:
+            w,h = orig_rgb.size
+            m = max(w,h) + int(max(w,h)*0.1)
+            base = Image.new("RGB", (m,m), (255,255,255))
+            base.paste(orig_rgb, ((m-w)//2, (m-h)//2))
+            final = base.resize((2000,2000), Image.LANCZOS)
+            processed.append((name, final))
 
-    cols = st.columns(4)
+    cols = st.columns(3)
     for i, (name, img) in enumerate(processed):
-        with cols[i % 4]:
-            label = "AI Removed" if ai_remove else "Original"
-            st.image(img, caption=f"{name[:15]} - {label}", use_container_width=True)
+        with cols[i % 3]:
+            st.image(img, caption=f"{name[:18]} - {mode_text}", use_container_width=True)
 
     zbuf = io.BytesIO()
     with zipfile.ZipFile(zbuf, "w") as z:
         for name, img in processed:
             b = io.BytesIO()
-            img.save(b, format="JPEG", quality=quality)
-            z.writestr(f"pureframe_{name.rsplit('.',1)[0]}.jpg", b.getvalue())
-    st.divider()
-    st.download_button(f"Download {len(processed)} Images ZIP - {mode_text}", data=zbuf.getvalue(), file_name="pureframe.zip", mime="application/zip", use_container_width=True)
+            img.save(b, format="JPEG", quality=95)
+            z.writestr(f"{name.rsplit('.',1)[0]}.jpg", b.getvalue())
+    st.download_button(f"Download {len(processed)} Images", zbuf.getvalue(), "pureframe.zip", "application/zip", use_container_width=True)
 else:
-    st.markdown('<div style="text-align:center; padding:60px; background:white; border-radius:16px; border:1.5px dashed #ddd;">Drop images to start<br><span style="color:#999; font-size:12px;">Toggle ON/OFF to switch between AI removed and Original</span></div>', unsafe_allow_html=True)
+    st.info("Upload images to start")
